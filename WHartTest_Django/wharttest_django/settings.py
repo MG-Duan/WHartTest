@@ -52,7 +52,7 @@ SECRET_KEY = os.environ.get(
 # SECURITY WARNING: don't run with debug turned on in production!
 # Load DEBUG mode from an environment variable. Defaults to False for production.
 # Set DJANGO_DEBUG=True in your development environment.
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 # ALLOWED_HOSTS
 # Load allowed hosts from an environment variable (comma-separated string).
