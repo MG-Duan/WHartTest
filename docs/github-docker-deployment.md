@@ -253,7 +253,7 @@ WHARTTEST_API_KEY=your-api-key
 ### 停止并删除容器
 
 ```bash
-docker-compose -f docker-compose.prod.yml down
+docker-compose down
 ```
 
 ### 删除镜像

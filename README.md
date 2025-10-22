@@ -22,13 +22,7 @@ cd WHartTest
 cp .env.example .env
 # 编辑 .env 文件，设置必要的环境变量
 
-# 3. 使用预构建镜像启动
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-#### 本地构建镜像（开发环境）
-```bash
-# 使用默认配置，会在本地构建镜像
+# 3. 启动服务（自动拉取预构建镜像）
 docker-compose up -d
 ```
 
