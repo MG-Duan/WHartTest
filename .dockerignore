@@ -1,0 +1,33 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+README.md
+docs/
+img/
+*.md
+
+# Docker
+docker-compose*.yml
+.dockerignore
+
+# Deployment scripts
+deploy-scripts/
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.*

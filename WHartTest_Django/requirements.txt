@@ -22,14 +22,6 @@ django-cors-headers==4.3.1
 # https://github.com/theskumar/python-dotenv/blob/main/LICENSE
 python-dotenv==1.1.1
 
-# MCP服务器框架 - MIT许可证 (当前版本: 2.4.0)
-# https://github.com/jlowin/fastmcp/blob/main/LICENSE
-fastmcp==2.4.0
-
-# HTTP客户端库 - BSD许可证 (当前版本: 0.28.1)
-# https://github.com/encode/httpx/blob/master/LICENSE.md
-httpx==0.28.1
-
 # OpenAI API客户端 - MIT许可证 (当前版本: 1.79.0)
 # https://github.com/openai/openai-python/blob/main/LICENSE
 openai==1.79.0

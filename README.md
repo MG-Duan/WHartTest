@@ -8,6 +8,34 @@ WHartTest 是一个基于 Django REST Framework 构建的AI驱动测试自动化
 ## 文档
 详细文档请访问：https://mgdaaslab.github.io/WHartTest/
 
+## 快速开始
+
+### Docker 部署（推荐）
+
+#### 使用预构建镜像（无需本地构建）
+```bash
+# 1. 克隆仓库
+git clone https://github.com/MG-Duan/WHartTest.git
+cd WHartTest
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，设置必要的环境变量
+
+# 3. 使用预构建镜像启动
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+#### 本地构建镜像（开发环境）
+```bash
+# 使用默认配置，会在本地构建镜像
+docker-compose up -d
+```
+
+详细的部署说明请参考：
+- [GitHub 自动构建部署指南](./docs/github-docker-deployment.md)
+- [完整部署文档](https://mgdaaslab.github.io/WHartTest/)
+
 ## 页面展示
 
 | | |

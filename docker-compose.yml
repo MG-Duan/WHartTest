@@ -1,0 +1,98 @@
+# 开发环境配置 - 本地构建Docker镜像
+# 使用方式: docker-compose up -d
+#
+# 如果需要使用预构建的镜像而不是本地构建，请使用:
+# docker-compose -f docker-compose.prod.yml up -d
+
+services:
+  # 后端 Django 服务
+  backend:
+    build:
+      context: ./WHartTest_Django
+      dockerfile: Dockerfile
+    # 如果想使用预构建镜像，注释掉build部分，取消注释下面的image行
+    # image: ghcr.io/mg-duan/wharttest-backend:latest
+    container_name: wharttest-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./WHartTest_Django/db.sqlite3:/app/db.sqlite3
+      - ./WHartTest_Django/media:/app/media
+      - backend-static:/app/static
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-change-this-in-production}
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,backend
+      - DJANGO_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:80
+      - DJANGO_ADMIN_USERNAME=${DJANGO_ADMIN_USERNAME:-admin}
+      - DJANGO_ADMIN_EMAIL=${DJANGO_ADMIN_EMAIL:-admin@example.com}
+      - DJANGO_ADMIN_PASSWORD=${DJANGO_ADMIN_PASSWORD:-admin123456}
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 前端 Vue 服务
+  frontend:
+    build:
+      context: ./WHartTest_Vue
+      dockerfile: Dockerfile
+    # 如果想使用预构建镜像，注释掉build部分，取消注释下面的image行
+    # image: ghcr.io/mg-duan/wharttest-frontend:latest
+    container_name: wharttest-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # MCP 服务（独立容器）
+  mcp:
+    build:
+      context: ./WHartTest_MCP
+      dockerfile: Dockerfile
+    # 如果想使用预构建镜像，注释掉build部分，取消注释下面的image行
+    # image: ghcr.io/mg-duan/wharttest-mcp:latest
+    container_name: wharttest-mcp
+    environment:
+      # WHartTest Tools 配置
+      - WHARTTEST_BACKEND_URL=${WHARTTEST_BACKEND_URL:-http://backend:8000}
+      - WHARTTEST_API_KEY=${WHARTTEST_API_KEY:-}
+      # MS MCP API 配置（可选）
+      - MS_API_HOST=${MS_API_HOST:-http://ms.example.com}
+      - MS_ACCESS_KEY=${MS_ACCESS_KEY:-your_16byte_key1}
+      - MS_SECRET_KEY=${MS_SECRET_KEY:-your_16byte_key2}
+    ports:
+      - "8006:8006"  # WHartTest_tools 服务端口
+      - "8007:8007"  # ms_mcp_api 服务端口
+    depends_on:
+      - backend
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8006/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  wharttest-network:
+    driver: bridge
+
+volumes:
+  backend-static:

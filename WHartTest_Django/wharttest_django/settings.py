@@ -224,6 +224,8 @@ if CORS_ALLOWED_ORIGINS_ENV:
 elif DEBUG:
     # Default for development, allows frontend running on common ports
     CORS_ALLOWED_ORIGINS = [
+        "http://localhost",       # Nginx default (port 80)
+        "http://127.0.0.1",
         "http://localhost:3000",  # React default
         "http://127.0.0.1:3000",
         "http://localhost:5173",  # Vite default
@@ -271,6 +273,8 @@ if CSRF_TRUSTED_ORIGINS_ENV:
     CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',')]
 elif DEBUG:
     CSRF_TRUSTED_ORIGINS = [ # Default for development
+        "http://localhost",
+        "http://127.0.0.1",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:8080",
