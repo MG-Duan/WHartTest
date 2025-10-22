@@ -13,8 +13,11 @@ RUN npm ci --only=production=false
 # 复制源代码
 COPY . .
 
-# 构建应用（跳过类型检查）
-RUN npx vite build
+# 复制生产环境配置
+COPY .env.production .env.production
+
+# 构建应用（指定生产模式）
+RUN npx vite build --mode production
 
 # 第二阶段：运行阶段
 FROM nginx:alpine

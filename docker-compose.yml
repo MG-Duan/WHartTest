@@ -7,7 +7,7 @@
 services:
   # 后端 Django 服务
   backend:
-    image: ghcr.io/mg-duan/wharttest-backend:latest
+    image: ghcr.io/mg-duan/wharttest-backend:main
     # 如果需要本地构建，注释掉上面的image行，取消注释下面的build部分
     # build:
     #   context: ./WHartTest_Django
@@ -39,7 +39,7 @@ services:
 
   # 前端 Vue 服务
   frontend:
-    image: ghcr.io/mg-duan/wharttest-frontend:latest
+    image: ghcr.io/mg-duan/wharttest-frontend:main
     # 如果需要本地构建，注释掉上面的image行，取消注释下面的build部分
     # build:
     #   context: ./WHartTest_Vue
@@ -61,7 +61,7 @@ services:
 
   # MCP 服务（独立容器）
   mcp:
-    image: ghcr.io/mg-duan/wharttest-mcp:latest
+    image: ghcr.io/mg-duan/wharttest-mcp:main
     # 如果需要本地构建，注释掉上面的image行，取消注释下面的build部分
     # build:
     #   context: ./WHartTest_MCP
