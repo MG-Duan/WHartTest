@@ -5,7 +5,12 @@
 
 # 加载 .env 文件（本地开发时使用）
 from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
+
+# 获取当前文件所在目录（WHartTest_MCP/）
+current_dir = Path(__file__).parent
+# 加载同目录下的 .env 文件
+load_dotenv(current_dir / '.env')
 
 from fastmcp import FastMCP
 import json

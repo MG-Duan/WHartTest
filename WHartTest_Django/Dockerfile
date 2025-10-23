@@ -35,5 +35,5 @@ RUN mkdir -p media static nltk_data
 # 暴露端口
 EXPOSE 8000
 
-# 启动命令
-CMD ["bash", "-c", "python manage.py migrate --noinput && python manage.py init_admin && python manage.py runserver 0.0.0.0:8000"]
+# 启动命令 - 使用 uvicorn ASGI 服务器支持异步接口
+CMD ["bash", "-c", "python manage.py migrate --noinput && python manage.py init_admin && uv run uvicorn wharttest_django.asgi:application --host 0.0.0.0 --port 8000"]
