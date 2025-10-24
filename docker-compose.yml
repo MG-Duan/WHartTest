@@ -5,6 +5,24 @@
 # 如果需要本地构建镜像（开发环境），请注释掉 image 行，取消注释 build 部分
 
 services:
+  # Redis 服务 - Celery的broker和backend
+  redis:
+    image: redis:7-alpine
+    container_name: wharttest-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
   # 后端 Django 服务
   backend:
     image: ghcr.io/mg-duan/wharttest-backend:main
@@ -27,6 +45,12 @@ services:
       - DJANGO_ADMIN_USERNAME=${DJANGO_ADMIN_USERNAME:-admin}
       - DJANGO_ADMIN_EMAIL=${DJANGO_ADMIN_EMAIL:-admin@example.com}
       - DJANGO_ADMIN_PASSWORD=${DJANGO_ADMIN_PASSWORD:-admin123456}
+      # Celery配置
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - wharttest-network
     restart: unless-stopped
@@ -36,6 +60,68 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Celery Worker 服务
+  celery-worker:
+    image: ghcr.io/mg-duan/wharttest-backend:main
+    # 如果需要本地构建，注释掉上面的image行，取消注释下面的build部分
+    # build:
+    #   context: ./WHartTest_Django
+    #   dockerfile: Dockerfile
+    container_name: wharttest-celery-worker
+    command: celery -A wharttest_django worker -l info --concurrency=4
+    volumes:
+      - ./WHartTest_Django/db.sqlite3:/app/db.sqlite3
+      - ./WHartTest_Django/media:/app/media
+      - backend-static:/app/static
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-change-this-in-production}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-*}
+      # Celery配置
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "celery", "-A", "wharttest_django", "inspect", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Celery Beat 服务 (定时任务调度器，可选)
+  celery-beat:
+    image: ghcr.io/mg-duan/wharttest-backend:main
+    # 如果需要本地构建，注释掉上面的image行，取消注释下面的build部分
+    # build:
+    #   context: ./WHartTest_Django
+    #   dockerfile: Dockerfile
+    container_name: wharttest-celery-beat
+    command: celery -A wharttest_django beat -l info
+    volumes:
+      - ./WHartTest_Django/db.sqlite3:/app/db.sqlite3
+      - celery-beat-schedule:/app/celerybeat-schedule
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-change-this-in-production}
+      # Celery配置
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    networks:
+      - wharttest-network
+    restart: unless-stopped
 
   # 前端 Vue 服务
   frontend:
@@ -90,9 +176,30 @@ services:
       retries: 3
       start_period: 30s
 
+  # Playwright MCP 服务（官方镜像）
+  playwright-mcp:
+    image: ghcr.io/microsoft/playwright-mcp:latest
+    container_name: wharttest-playwright-mcp
+    ports:
+      - "8931:8931"  # Playwright MCP 服务端口
+    volumes:
+      - ./WHartTest_MCP/playwright-mcp-config.json:/app/config.json:ro
+    command: ["--config", "/app/config.json"]
+    networks:
+      - wharttest-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8931/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 networks:
   wharttest-network:
     driver: bridge
 
 volumes:
   backend-static:
+  redis-data:
+  celery-beat-schedule:
