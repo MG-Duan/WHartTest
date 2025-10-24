@@ -55,7 +55,7 @@ services:
       - wharttest-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/')"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/api/')"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -81,6 +81,8 @@ services:
       # Celery配置
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # 内部API基础URL - 使用Docker服务名
+      - DJANGO_BASE_URL=http://backend:8000
     depends_on:
       redis:
         condition: service_healthy
@@ -104,16 +106,18 @@ services:
     #   context: ./WHartTest_Django
     #   dockerfile: Dockerfile
     container_name: wharttest-celery-beat
-    command: celery -A wharttest_django beat -l info
+    command: celery -A wharttest_django beat -l info --schedule=/app/beat-schedule/celerybeat-schedule
     volumes:
       - ./WHartTest_Django/db.sqlite3:/app/db.sqlite3
-      - celery-beat-schedule:/app/celerybeat-schedule
+      - celery-beat-schedule:/app/beat-schedule
     environment:
       - DJANGO_DEBUG=True
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-django-insecure-change-this-in-production}
       # Celery配置
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      # 内部API基础URL - 使用Docker服务名
+      - DJANGO_BASE_URL=http://backend:8000
     depends_on:
       redis:
         condition: service_healthy
@@ -176,20 +180,27 @@ services:
       retries: 3
       start_period: 30s
 
-  # Playwright MCP 服务（官方镜像）
+  # Playwright MCP 服务（官方Docker镜像）
   playwright-mcp:
-    image: ghcr.io/microsoft/playwright-mcp:latest
+    image: mcr.microsoft.com/playwright/mcp
     container_name: wharttest-playwright-mcp
+    entrypoint: node
+    command: [
+      "cli.js",
+      "--headless",
+      "--browser", "chromium",
+      "--no-sandbox",
+      "--port", "8931",
+      "--host", "0.0.0.0",
+      "--allowed-hosts", "*"
+    ]
     ports:
-      - "8931:8931"  # Playwright MCP 服务端口
-    volumes:
-      - ./WHartTest_MCP/playwright-mcp-config.json:/app/config.json:ro
-    command: ["--config", "/app/config.json"]
+      - "8931:8931"
     networks:
       - wharttest-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8931/health"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8931/mcp"]
       interval: 30s
       timeout: 10s
       retries: 3

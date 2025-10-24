@@ -392,3 +392,8 @@ CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Worker执行多少任务后重启
 # Celery日志配置
 CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
 CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
+
+# 内部API基础URL配置 - 用于Celery任务等内部服务调用
+# 在Docker环境中应设置为 http://backend:8000
+# 在本地开发环境中可以使用 http://localhost:8000
+BASE_URL = os.environ.get('DJANGO_BASE_URL', 'http://localhost:8000')
