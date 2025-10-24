@@ -3,12 +3,13 @@
     "browserName": "chromium",
     "isolated": true,
     "launchOptions": {
-      "headless": false
+      "headless": true,
+      "channel": "chromium"
     },
     "contextOptions": {
-      "viewport": { 
-        "width": 1920, 
-        "height": 1080 
+      "viewport": {
+        "width": 1920,
+        "height": 1080
       }
     }
   },

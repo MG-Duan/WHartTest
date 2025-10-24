@@ -168,6 +168,8 @@ services:
     ports:
       - "8006:8006"  # WHartTest_tools 服务端口
       - "8007:8007"  # ms_mcp_api 服务端口
+    volumes:
+      - ./playwright-screenshots:/tmp/playwright-output  # 使用本地目录挂载
     depends_on:
       - backend
     networks:
@@ -187,15 +189,16 @@ services:
     entrypoint: node
     command: [
       "cli.js",
-      "--headless",
-      "--browser", "chromium",
       "--no-sandbox",
-      "--port", "8931",
       "--host", "0.0.0.0",
-      "--allowed-hosts", "*"
+      "--allowed-hosts", "*",
+      "--config", "/app/playwright-mcp-config.json"
     ]
     ports:
       - "8931:8931"
+    volumes:
+      - ./playwright-screenshots:/tmp/playwright-output  # 使用本地目录挂载
+      - ./WHartTest_MCP/playwright-mcp-config.json:/app/playwright-mcp-config.json:ro  # 挂载配置文件
     networks:
       - wharttest-network
     restart: unless-stopped
@@ -214,3 +217,4 @@ volumes:
   backend-static:
   redis-data:
   celery-beat-schedule:
+  # playwright-screenshots 改用本地目录挂载，不再需要 named volume
