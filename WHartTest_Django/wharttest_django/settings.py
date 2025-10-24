@@ -361,3 +361,34 @@ LOGGING = {
         # 可以根据需要添加其他应用的 logger
     },
 }
+
+# Celery配置
+# Celery使用Redis作为broker和backend
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+
+# Celery时区设置
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Celery任务结果配置
+CELERY_RESULT_EXTENDED = True
+CELERY_RESULT_EXPIRES = 3600  # 结果过期时间(秒)
+
+# Celery任务序列化
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ['json']
+
+# Celery任务配置
+CELERY_TASK_TRACK_STARTED = True  # 追踪任务开始状态
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 任务超时时间(秒) - 30分钟
+CELERY_TASK_SOFT_TIME_LIMIT = 25 * 60  # 软超时时间(秒) - 25分钟
+
+# Celery Worker配置
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Worker预取任务数量
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000  # Worker执行多少任务后重启
+
+# Celery日志配置
+CELERY_WORKER_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
+CELERY_WORKER_TASK_LOG_FORMAT = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'

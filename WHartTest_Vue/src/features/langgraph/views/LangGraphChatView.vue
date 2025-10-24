@@ -433,6 +433,11 @@ const updateSessionInList = (id: string, firstMessage?: string, updateTime: bool
     if (chatSessions.value[existingIndex].messageCount !== undefined && updateTime) {
       chatSessions.value[existingIndex].messageCount += 1;
     }
+    
+    // 🆕 更新时间后，重新按时间倒序排序会话列表
+    if (updateTime) {
+      chatSessions.value.sort((a, b) => b.lastTime.getTime() - a.lastTime.getTime());
+    }
   } else {
     // 添加新会话
     chatSessions.value.unshift({
