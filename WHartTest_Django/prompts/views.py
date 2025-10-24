@@ -512,16 +512,22 @@ class UserPromptViewSet(BaseModelViewSet):
 
 2. **截图和上传（重要）**
    - **每个步骤执行后都必须截屏并上传**
+   - **截图文件名必须唯一**：使用格式 `testcase-{{testcase_id}}-step-{{step_number}}-{{timestamp}}.png`
    - 步骤流程：
      a. 使用 Playwright 的 `take_screenshot` 工具截屏
-     b. **立即使用 WHartTest MCP 工具的 `upload_testcase_screenshot` 上传截图到测试用例**
+        - 指定唯一文件名，例如：`testcase-{testcase_id}-step-1-1234567890.png`
+        - 避免使用默认文件名，防止并发测试时文件冲突
+     b. **立即使用 WHartTest MCP 工具的 `save_operation_screenshots_to_the_application_case` 上传截图**
      c. 记录上传后返回的截图路径
    - 参数示例：
      ```
-     testcase_id: {testcase_id}
-     step_number: 当前步骤编号
-     screenshot_path: 截图的本地文件路径
+     project_id: 项目ID
+     case_id: {testcase_id}
+     file_path: 截图的本地文件路径（必须是唯一的）
      title: "步骤X执行截图"
+     description: 步骤描述
+     step_number: 当前步骤编号
+     page_url: 当前页面URL
      ```
 
 3. **错误处理**
@@ -550,10 +556,13 @@ class UserPromptViewSet(BaseModelViewSet):
 ```
 
 **重要提示**：
-- **每个步骤都必须调用 WHartTest 的 upload_testcase_screenshot 工具上传截图**
+- **截图文件名唯一性**：必须为每个截图使用唯一的文件名，格式：`testcase-{{testcase_id}}-step-{{step_number}}-{{timestamp}}.png`
+- **工具名称修正**：上传截图使用 `save_operation_screenshots_to_the_application_case` 工具
+- **每个步骤都必须调用 WHartTest 的工具上传截图**
 - 每个步骤的screenshot字段必须包含上传后的截图路径
 - 执行完所有步骤后，务必关闭浏览器
-- 确保JSON格式正确，可以被程序解析"""
+- 确保JSON格式正确，可以被程序解析
+- **并发安全**：使用唯一文件名避免多个测试用例同时执行时的文件冲突"""
             }
         }
 

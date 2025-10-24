@@ -289,7 +289,8 @@ class GlobalMCPSessionManager:
 
     def __init__(self):
         if not self._initialized:
-            self.clients = {}  # config_hash -> PersistentMCPClient
+            self.clients = {}  # config_hash -> PersistentMCPClient (旧的共享模式)
+            self.session_clients = {}  # session_key -> PersistentMCPClient (独立客户端)
             self.session_contexts = {}  # session_key -> session_context
             self.tools_cache = {}  # session_key -> tools (按session_id缓存工具)
             self._initialized = True
@@ -315,7 +316,7 @@ class GlobalMCPSessionManager:
     ) -> List[BaseTool]:
         """
         根据配置和会话ID获取工具
-        支持跨对话轮次的工具复用
+        每个session_id创建独立的MCP客户端，实现真正的并发隔离
         
         Args:
             server_configs: MCP服务器配置
@@ -337,9 +338,16 @@ class GlobalMCPSessionManager:
             logger.info(f"Reusing cached tools for session: {session_key}")
             return self.tools_cache[session_key]
         
-        # 首次请求，创建持久化客户端并加载工具
-        logger.info(f"Loading tools for new session: {session_key}")
-        client = await self.get_persistent_client(server_configs)
+        # 为每个session_key创建独立的MCP客户端
+        # 这样每个并发测试用例都有自己的浏览器实例
+        async with self._lock:
+            if session_key not in self.session_clients:
+                logger.info(f"Creating independent MCP client for session: {session_key}")
+                client = PersistentMCPClient(server_configs)
+                self.session_clients[session_key] = client
+                logger.info(f"Independent client created. Total session clients: {len(self.session_clients)}")
+        
+        client = self.session_clients[session_key]
         tools = await client.get_all_persistent_tools()
         
         # 仅在成功加载到工具时进行缓存，避免缓存空列表导致后续无法恢复
@@ -349,9 +357,8 @@ class GlobalMCPSessionManager:
         else:
             logger.warning(f"No tools loaded for session: {session_key}; skip caching")
         
-        # 记录会话上下文（不强制关闭 client，避免影响其他会话）
+        # 记录会话上下文
         self.session_contexts[session_key] = {
-            'config_hash': hash(str(sorted(server_configs.items()))),
             'client': client,
             'last_used': asyncio.get_event_loop().time(),
             'user_id': user_id,
@@ -396,19 +403,30 @@ class GlobalMCPSessionManager:
         """清理所有客户端"""
         logger.info("Cleaning up all MCP clients...")
 
+        # 清理共享客户端
         for config_hash, client in list(self.clients.items()):
             try:
                 await client.close_sessions()
             except Exception as exc:
-                logger.error(f"Error cleaning up client {config_hash}: {exc}", exc_info=True)
+                logger.error(f"Error cleaning up shared client {config_hash}: {exc}", exc_info=True)
+
+        # 清理独立的会话客户端
+        for session_key, client in list(self.session_clients.items()):
+            try:
+                await client.close_sessions()
+                logger.info(f"Cleaned up session client: {session_key}")
+            except Exception as exc:
+                logger.error(f"Error cleaning up session client {session_key}: {exc}", exc_info=True)
 
         self.clients.clear()
+        self.session_clients.clear()
         self.session_contexts.clear()
+        self.tools_cache.clear()
         logger.info("All MCP clients and session contexts cleaned up")
 
     async def cleanup_user_session(self, user_id: str, project_id: str, session_id: str = None):
         """
-        清理特定用户项目的会话
+        清理特定用户项目的会话，包括关闭独立的MCP客户端
         
         Args:
             user_id: 用户ID
@@ -429,17 +447,21 @@ class GlobalMCPSessionManager:
             return
 
         try:
-            client = context.get('client')
-            # 注意：不要关闭client的所有会话，因为可能被其他会话共享
-            # 只清理缓存即可
-            logger.info(f"Cleaned up cached tools for session: {session_key}")
+            # 获取并关闭独立的会话客户端
+            client = self.session_clients.pop(session_key, None)
+            if client:
+                await client.close_sessions()
+                logger.info(f"Closed and cleaned up independent client for session: {session_key}")
+                logger.info(f"Remaining session clients: {len(self.session_clients)}")
+            else:
+                logger.info(f"No independent client found for session: {session_key}")
         except Exception as exc:
             logger.error(f"Error cleaning up session for {session_key}: {exc}", exc_info=True)
         finally:
             self.session_contexts.pop(session_key, None)
     
     async def cleanup_all_user_sessions(self, user_id: str, project_id: str):
-        """清理用户在某个项目下的所有会话"""
+        """清理用户在某个项目下的所有会话，包括关闭所有独立客户端"""
         prefix = f"{user_id}_{project_id}_"
         
         # 找到所有匹配的会话键
@@ -448,7 +470,19 @@ class GlobalMCPSessionManager:
         logger.info(f"Cleaning up {len(matching_keys)} sessions for user {user_id}, project {project_id}")
         
         for session_key in matching_keys:
+            # 清理工具缓存
             self.tools_cache.pop(session_key, None)
+            
+            # 关闭并移除独立客户端
+            client = self.session_clients.pop(session_key, None)
+            if client:
+                try:
+                    await client.close_sessions()
+                    logger.info(f"Closed client for session: {session_key}")
+                except Exception as exc:
+                    logger.error(f"Error closing client for {session_key}: {exc}", exc_info=True)
+            
+            # 清理会话上下文
             self.session_contexts.pop(session_key, None)
         
         logger.info(f"Cleaned up all sessions for user {user_id}, project {project_id}")

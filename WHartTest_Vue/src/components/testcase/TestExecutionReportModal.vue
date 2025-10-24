@@ -76,7 +76,7 @@
 
   <!-- 结果详情抽屉 -->
   <a-drawer
-    :width="600"
+    :width="900"
     :visible="detailDrawerVisible"
     @ok="detailDrawerVisible = false"
     @cancel="detailDrawerVisible = false"
@@ -109,7 +109,7 @@
         <div class="screenshot-count">
           共 {{ selectedResult.testcase_detail.screenshots.length }} 张截图
         </div>
-        <div class="carousel-wrapper">
+        <div class="screenshot-viewer-wrapper">
           <div v-if="selectedResult.testcase_detail.screenshots[currentSlideIndex]" class="screenshot-info-panel">
             <div class="screenshot-title">{{ selectedResult.testcase_detail.screenshots[currentSlideIndex].title }}</div>
             <div class="screenshot-description">{{ selectedResult.testcase_detail.screenshots[currentSlideIndex].description }}</div>
@@ -122,38 +122,32 @@
               </span>
             </div>
           </div>
-          <a-carousel
-            ref="carouselRef"
-            :style="{ width: '100%', height: '400px' }"
-            show-arrow="never"
-            :indicator-type="selectedResult.testcase_detail.screenshots.length > 1 ? 'dot' : 'never'"
-            :auto-play="false"
-            @change="handleSlideChange"
-          >
-            <a-carousel-item
-              v-for="(screenshot, index) in selectedResult.testcase_detail.screenshots"
-              :key="screenshot.id || index"
-            >
-              <div class="screenshot-container">
-                <div class="screenshot-index">{{ index + 1 }} / {{ selectedResult.testcase_detail.screenshots.length }}</div>
-                <img :src="screenshot.screenshot_url" :style="{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }" />
+          <div class="screenshot-viewer">
+            <div class="screenshot-container">
+              <div class="screenshot-index">
+                {{ currentSlideIndex + 1 }} / {{ selectedResult.testcase_detail.screenshots.length }}
               </div>
-            </a-carousel-item>
-          </a-carousel>
-          <button
-            v-if="selectedResult.testcase_detail.screenshots.length > 1"
-            class="custom-arrow custom-arrow-left"
-            @click="handlePrev"
-          >
-            <icon-left />
-          </button>
-          <button
-            v-if="selectedResult.testcase_detail.screenshots.length > 1"
-            class="custom-arrow custom-arrow-right"
-            @click="handleNext"
-          >
-            <icon-right />
-          </button>
+              <img
+                :src="selectedResult.testcase_detail.screenshots[currentSlideIndex].screenshot_url"
+                :key="currentSlideIndex"
+                class="screenshot-image"
+              />
+            </div>
+            <button
+              v-if="selectedResult.testcase_detail.screenshots.length > 1"
+              class="custom-arrow custom-arrow-left"
+              @click="handlePrev"
+            >
+              <icon-left />
+            </button>
+            <button
+              v-if="selectedResult.testcase_detail.screenshots.length > 1"
+              class="custom-arrow custom-arrow-right"
+              @click="handleNext"
+            >
+              <icon-right />
+            </button>
+          </div>
         </div>
       </div>
       <a-empty v-else description="暂无截图" />
@@ -290,47 +284,21 @@ const getStatusText = (status: string) => {
 const currentSlideIndex = ref(0);
 
 const handlePrev = () => {
-  if (!carouselRef.value || !selectedResult.value?.testcase_detail?.screenshots) return;
+  if (!selectedResult.value?.testcase_detail?.screenshots) return;
   const total = selectedResult.value.testcase_detail.screenshots.length;
-  if (!total) return;
+  if (!total || total <= 1) return;
   
-  // 直接调用DOM元素的方法
-  const carouselEl = carouselRef.value.$el || carouselRef.value;
-  const prevBtn = carouselEl.querySelector('.arco-carousel-arrow-left');
-  if (prevBtn) {
-    prevBtn.click();
-  } else {
-    // 备选：通过指示器点击
-    const newIndex = (currentSlideIndex.value - 1 + total) % total;
-    const indicators = carouselEl.querySelectorAll('.arco-carousel-indicator-item');
-    if (indicators[newIndex]) {
-      indicators[newIndex].click();
-    }
-  }
+  // 计算新的索引
+  currentSlideIndex.value = (currentSlideIndex.value - 1 + total) % total;
 };
 
 const handleNext = () => {
-  if (!carouselRef.value || !selectedResult.value?.testcase_detail?.screenshots) return;
+  if (!selectedResult.value?.testcase_detail?.screenshots) return;
   const total = selectedResult.value.testcase_detail.screenshots.length;
-  if (!total) return;
+  if (!total || total <= 1) return;
   
-  // 直接调用DOM元素的方法
-  const carouselEl = carouselRef.value.$el || carouselRef.value;
-  const nextBtn = carouselEl.querySelector('.arco-carousel-arrow-right');
-  if (nextBtn) {
-    nextBtn.click();
-  } else {
-    // 备选：通过指示器点击
-    const newIndex = (currentSlideIndex.value + 1) % total;
-    const indicators = carouselEl.querySelectorAll('.arco-carousel-indicator-item');
-    if (indicators[newIndex]) {
-      indicators[newIndex].click();
-    }
-  }
-};
-
-const handleSlideChange = (index: number) => {
-  currentSlideIndex.value = index;
+  // 计算新的索引
+  currentSlideIndex.value = (currentSlideIndex.value + 1) % total;
 };
 
 watch(
@@ -338,9 +306,6 @@ watch(
   (screens) => {
     if (!screens || screens.length === 0) return;
     currentSlideIndex.value = 0;
-    nextTick(() => {
-      carouselRef.value?.goto?.(0);
-    });
   }
 );
 
@@ -383,8 +348,21 @@ watch(
   align-items: center;
   justify-content: center;
   height: 100%;
-  padding: 0 60px 50px 60px;
+  padding: 20px 80px 20px 80px;
   box-sizing: border-box;
+}
+
+.screenshot-image {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  transition: opacity 0.3s ease;
+  border: 1px solid #e5e6eb;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .screenshot-index {
@@ -433,18 +411,24 @@ watch(
   align-items: center;
 }
 
-/* 轮播图容器 */
-.carousel-wrapper {
+/* 截图查看器容器 */
+.screenshot-viewer-wrapper {
   position: relative;
+}
+
+.screenshot-viewer {
+  position: relative;
+  width: 100%;
+  height: 600px;
 }
 
 /* 自定义箭头样式 */
 .custom-arrow {
   position: absolute;
   top: 50%;
-  transform: translateY(calc(-50% + 50px));
-  width: 48px;
-  height: 48px;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
   background: rgba(0, 0, 0, 0.7);
   border: 2px solid rgba(255, 255, 255, 0.9);
   border-radius: 50%;
@@ -453,59 +437,36 @@ watch(
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
-  z-index: 10;
+  z-index: 100;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.4),
     0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .custom-arrow-left {
-  left: 16px;
+  left: 20px;
 }
 
 .custom-arrow-right {
-  right: 16px;
+  right: 20px;
 }
 
 .custom-arrow:hover {
   background: rgba(0, 0, 0, 0.85);
   border-color: rgba(255, 255, 255, 1);
-  transform: translateY(calc(-50% + 50px)) scale(1.15);
+  transform: translateY(-50%) scale(1.15);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.5),
     0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
+.custom-arrow:active {
+  transform: translateY(-50%) scale(1.05);
+}
+
 .custom-arrow :deep(.arco-icon) {
-  font-size: 24px;
+  font-size: 28px;
   color: white;
-}
-
-:deep(.arco-carousel-indicator-wrapper) {
-  bottom: -40px;
-  z-index: 10;
-  position: relative;
-}
-
-:deep(.arco-carousel-indicator-item) {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 0, 0, 0.5);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-:deep(.arco-carousel-indicator-item:hover) {
-  background: rgba(0, 0, 0, 0.5);
-  transform: scale(1.2);
-}
-
-:deep(.arco-carousel-indicator-item-active) {
-  width: 24px;
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.7);
-  border-color: rgba(0, 0, 0, 0.8);
+  font-weight: bold;
 }
 </style>

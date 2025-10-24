@@ -462,6 +462,19 @@ async def _execute_testcase_via_chat_api(result: TestCaseResult):
             result.status = 'pass'
             execution_log.append("\n✓ 所有步骤执行完成")
         
+        # 【关键修复】执行完成后清理MCP会话，释放浏览器资源
+        try:
+            from mcp_tools.persistent_client import mcp_session_manager
+            await mcp_session_manager.cleanup_user_session(
+                user_id=str(executor.id),
+                project_id=str(project.id),
+                session_id=session_id
+            )
+            logger.info(f"已清理MCP会话: {session_id}")
+            execution_log.append(f"✓ 已清理浏览器会话资源")
+        except Exception as e:
+            logger.warning(f"清理MCP会话失败: {e}")
+        
     except httpx.HTTPError as e:
         error_msg = f"调用对话API失败: {str(e)}"
         execution_log.append(f"\n✗ {error_msg}")
